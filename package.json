@@ -1,0 +1,36 @@
+{
+  "name": "bridgeguard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cross-Chain Security Observability Platform",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "db:generate": "pnpm --filter @bridgeguard/database generate",
+    "db:migrate": "pnpm --filter @bridgeguard/database migrate",
+    "db:push": "pnpm --filter @bridgeguard/database push",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "dotenv": "^18.0.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.0",
+    "turbo": "^2.11.3",
+    "typescript": "^5.5.0",
+    "viem": "^2.17.0",
+    "vitest": "^1.6.0"
+  },
+  "packageManager": "pnpm@9.4.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
