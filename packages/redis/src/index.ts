@@ -1,3 +1,3 @@
-export * from './client';
-export * from './events';
-export * from './queues';
+export * from './client.js';
+export * from './events.js';
+export * from './queues.js';
