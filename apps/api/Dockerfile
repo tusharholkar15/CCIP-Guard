@@ -1,5 +1,5 @@
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
+RUN apk add --no-cache git openssh && npm install -g pnpm@9.4.0
 WORKDIR /app
 
 # Copy workspace files
@@ -8,10 +8,10 @@ COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm config set fetch-retries 5 && pnpm install --filter @bridgeguard/api...
 
 # Build
-RUN pnpm --filter @bridgeguard/api build
+RUN pnpm --filter @bridgeguard/api... build
 
 EXPOSE 3001
 CMD ["node", "apps/api/dist/server.js"]

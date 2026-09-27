@@ -2,6 +2,7 @@
   "name": "@bridgeguard/workers",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "concurrently \"npm:dev:*\"",

@@ -1,5 +1,5 @@
-import { SUPPORTED_CHAINS } from '../constants';
-import type { DetectorConfig } from './types';
+import { SUPPORTED_CHAINS } from '../constants/index.js';
+import type { DetectorConfig } from './types.js';
 
 export const DEFAULT_KNOWN_SENDERS: string[] = [
   '0x0000000000000000000000000000000000000001',

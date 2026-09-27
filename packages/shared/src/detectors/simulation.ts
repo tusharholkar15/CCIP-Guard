@@ -2,9 +2,9 @@ import {
   type SecurityTelemetryContext,
   type CorrelatedRiskResult,
   type DetectorConfig,
-} from './types';
-import { DEFAULT_DETECTOR_CONFIG } from './config';
-import { analyzeTelemetryRisk } from './correlation';
+} from './types.js';
+import { DEFAULT_DETECTOR_CONFIG } from './config.js';
+import { analyzeTelemetryRisk } from './correlation.js';
 
 export interface SimulationScenario {
   id: string;

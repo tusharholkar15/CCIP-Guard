@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
-import path from 'path';
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config();
 import { createPublicClient, http, type PublicClient, type Chain } from 'viem';
 import { db } from '@bridgeguard/database';
 import { chains, lanes, messages, rpcHealthLogs } from '@bridgeguard/database';
@@ -16,8 +15,8 @@ import {
 } from '@bridgeguard/shared';
 import { publishEvent, CHANNELS } from '@bridgeguard/redis';
 import { eq, and } from 'drizzle-orm';
-import { scanCCIPEvents } from './ccip-scanner';
-import { processNormalizedEvent } from './ccip-persister';
+import { scanCCIPEvents } from './ccip-scanner.js';
+import { processNormalizedEvent } from './ccip-persister.js';
 
 // CCIP v1.6 ABI events
 const CCIPMessageSentEvent = CCIPMessageSentAbi[0];
@@ -113,7 +112,7 @@ async function resolveLane(srcId: number, dstId: number): Promise<string | null>
 }
 
 import { CCIP_ABIS, CCIP_CHAIN_SELECTORS } from '@bridgeguard/shared';
-import { RobustCCIPWatcher } from './ccip-watcher';
+import { RobustCCIPWatcher } from './ccip-watcher.js';
 
 const activeWatchers: RobustCCIPWatcher[] = [];
 

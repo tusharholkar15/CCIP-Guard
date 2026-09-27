@@ -10,7 +10,7 @@ import {
   eventDeduplicationKey,
   SUPPORTED_CHAINS,
 } from '@bridgeguard/shared';
-import { CheckpointManager } from './ccip-checkpoint';
+import { CheckpointManager } from './ccip-checkpoint.js';
 
 export type WatcherStatus = 'IDLE' | 'CONNECTING' | 'ACTIVE' | 'RECONNECTING' | 'ERROR';
 

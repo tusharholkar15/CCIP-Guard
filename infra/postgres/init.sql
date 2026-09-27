@@ -3,8 +3,8 @@
 -- Enums
 CREATE TYPE chain_status AS ENUM ('HEALTHY', 'DEGRADED', 'DOWN', 'UNKNOWN');
 CREATE TYPE lane_status AS ENUM ('ACTIVE', 'DEGRADED', 'INACTIVE');
-CREATE TYPE message_state AS ENUM ('SENT', 'COMMITTED', 'EXECUTION_STARTED', 'DELIVERED', 'FAILED');
-CREATE TYPE incident_type AS ENUM ('HIGH_LATENCY', 'DELIVERY_FAILURE_SPIKE', 'MESSAGE_BACKLOG');
+CREATE TYPE message_state AS ENUM ('DISCOVERED', 'SENT', 'PROCESSING', 'DESTINATION_DETECTED', 'EXECUTED', 'SUCCESS', 'FAILED', 'TIMEOUT', 'UNKNOWN', 'REORGED');
+CREATE TYPE incident_type AS ENUM ('HIGH_LATENCY', 'DELIVERY_FAILURE_SPIKE', 'MESSAGE_BACKLOG', 'SUSPICIOUS_ACTIVITY');
 CREATE TYPE incident_severity AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
 CREATE TYPE incident_status AS ENUM ('OPEN', 'INVESTIGATING', 'MITIGATED', 'RESOLVED');
 CREATE TYPE alert_status AS ENUM ('ACTIVE', 'ACKNOWLEDGED', 'RESOLVED');
@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS incidents (
   resolved_at TIMESTAMPTZ,
   detection_reason TEXT NOT NULL,
   related_message_ids JSONB NOT NULL DEFAULT '[]',
+  metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -156,6 +157,44 @@ CREATE TABLE IF NOT EXISTS rpc_health_logs (
   is_healthy BOOLEAN NOT NULL,
   error_message TEXT,
   timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS indexer_checkpoints (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chain_id INTEGER UNIQUE NOT NULL,
+  chain_name VARCHAR(100) NOT NULL,
+  last_processed_block BIGINT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ccip_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ccip_message_id VARCHAR(66),
+  chain_id INTEGER NOT NULL,
+  transaction_hash VARCHAR(66) NOT NULL,
+  block_number BIGINT NOT NULL,
+  timestamp TIMESTAMPTZ NOT NULL,
+  contract_address VARCHAR(42) NOT NULL,
+  event_name VARCHAR(100) NOT NULL,
+  log_index INTEGER NOT NULL,
+  args JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unq_ccip_event UNIQUE(chain_id, transaction_hash, log_index)
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  chain_id INTEGER NOT NULL,
+  hash VARCHAR(66) NOT NULL,
+  block_number BIGINT NOT NULL,
+  timestamp TIMESTAMPTZ NOT NULL,
+  "from" VARCHAR(42),
+  "to" VARCHAR(42),
+  value VARCHAR(78),
+  ccip_relation VARCHAR(50),
+  status VARCHAR(20),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unq_transaction UNIQUE(chain_id, hash)
 );
 
 -- Indexes

@@ -4,9 +4,9 @@ import {
   type CorrelatedRiskResult,
   type SecurityTelemetryContext,
   type DetectorConfig,
-} from './types';
-import { DEFAULT_DETECTOR_CONFIG } from './config';
-import { evaluateAllDetectors } from './detectors';
+} from './types.js';
+import { DEFAULT_DETECTOR_CONFIG } from './config.js';
+import { evaluateAllDetectors } from './detectors.js';
 
 /**
  * Calculates correlated risk level based on the count of distinct anomalous signals.

@@ -3,8 +3,8 @@ import {
   type SecuritySignal,
   type SecurityTelemetryContext,
   type DetectorConfig,
-} from './types';
-import { DEFAULT_DETECTOR_CONFIG } from './config';
+} from './types.js';
+import { DEFAULT_DETECTOR_CONFIG } from './config.js';
 
 /**
  * Signal A: UNKNOWN_SENDER

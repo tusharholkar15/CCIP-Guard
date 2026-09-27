@@ -1,0 +1,232 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bridgeguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bridgeguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bridgeguard}
+      POSTGRES_DB: ${POSTGRES_DB:-bridgeguard}
+    expose:
+      - '5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER:-bridgeguard} -d $${POSTGRES_DB:-bridgeguard}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - bridgeguard-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: bridgeguard-redis
+    restart: unless-stopped
+    expose:
+      - '6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - bridgeguard-net
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: bridgeguard-api
+    restart: unless-stopped
+    ports:
+      - '${API_PORT:-3001}:3001'
+    expose:
+      - '3001'
+    environment:
+      NODE_ENV: production
+      API_PORT: 3001
+      API_HOST: 0.0.0.0
+      DATABASE_URL: ${PRODUCTION_DATABASE_URL:-postgresql://${POSTGRES_USER:-bridgeguard}:${POSTGRES_PASSWORD:-bridgeguard}@postgres:5432/${POSTGRES_DB:-bridgeguard}}
+      REDIS_URL: ${PRODUCTION_REDIS_URL:-redis://redis:6379}
+      API_KEY: ${API_KEY:-your-api-key-here}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:3001/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - bridgeguard-net
+
+  indexer:
+    build:
+      context: .
+      dockerfile: apps/indexer/Dockerfile
+    container_name: bridgeguard-indexer
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${PRODUCTION_DATABASE_URL:-postgresql://${POSTGRES_USER:-bridgeguard}:${POSTGRES_PASSWORD:-bridgeguard}@postgres:5432/${POSTGRES_DB:-bridgeguard}}
+      REDIS_URL: ${PRODUCTION_REDIS_URL:-redis://redis:6379}
+      ENVIRONMENT: ${ENVIRONMENT:-mainnet}
+      ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-https://ethereum-rpc.publicnode.com}
+      ARBITRUM_RPC_URL: ${ARBITRUM_RPC_URL:-https://arb1.arbitrum.io/rpc}
+      OPTIMISM_RPC_URL: ${OPTIMISM_RPC_URL:-https://mainnet.optimism.io}
+      BASE_RPC_URL: ${BASE_RPC_URL:-https://mainnet.base.org}
+      POLYGON_RPC_URL: ${POLYGON_RPC_URL:-https://polygon-bor-rpc.publicnode.com}
+      AVALANCHE_RPC_URL: ${AVALANCHE_RPC_URL:-https://api.avax.network/ext/bc/C/rpc}
+      BNB_RPC_URL: ${BNB_RPC_URL:-https://bsc-dataseed.binance.org}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - bridgeguard-net
+
+  worker-metrics:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile.metrics
+    container_name: bridgeguard-worker-metrics
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${PRODUCTION_DATABASE_URL:-postgresql://${POSTGRES_USER:-bridgeguard}:${POSTGRES_PASSWORD:-bridgeguard}@postgres:5432/${POSTGRES_DB:-bridgeguard}}
+      REDIS_URL: ${PRODUCTION_REDIS_URL:-redis://redis:6379}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bridgeguard-net
+
+  worker-alerts:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile.alerts
+    container_name: bridgeguard-worker-alerts
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${PRODUCTION_DATABASE_URL:-postgresql://${POSTGRES_USER:-bridgeguard}:${POSTGRES_PASSWORD:-bridgeguard}@postgres:5432/${POSTGRES_DB:-bridgeguard}}
+      REDIS_URL: ${PRODUCTION_REDIS_URL:-redis://redis:6379}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bridgeguard-net
+
+  worker-responses:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile.responses
+    container_name: bridgeguard-worker-responses
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${PRODUCTION_DATABASE_URL:-postgresql://${POSTGRES_USER:-bridgeguard}:${POSTGRES_PASSWORD:-bridgeguard}@postgres:5432/${POSTGRES_DB:-bridgeguard}}
+      REDIS_URL: ${PRODUCTION_REDIS_URL:-redis://redis:6379}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bridgeguard-net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:3001}
+        NEXT_PUBLIC_ENVIRONMENT: ${NEXT_PUBLIC_ENVIRONMENT:-mainnet}
+    container_name: bridgeguard-web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:3001}
+      NEXT_PUBLIC_ENVIRONMENT: ${NEXT_PUBLIC_ENVIRONMENT:-mainnet}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://127.0.0.1:3000 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - bridgeguard-net
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: bridgeguard-prometheus
+    restart: unless-stopped
+    expose:
+      - '9090'
+    volumes:
+      - ./infra/prometheus/prometheus.production.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - api
+    networks:
+      - bridgeguard-net
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: bridgeguard-grafana
+    restart: unless-stopped
+    ports:
+      - '${GRAFANA_PORT:-3002}:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-bridgeguard}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    depends_on:
+      - prometheus
+    networks:
+      - bridgeguard-net
+
+networks:
+  bridgeguard-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
